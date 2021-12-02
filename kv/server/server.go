@@ -79,10 +79,10 @@ func (server *Server) RawPut(_ context.Context, req *kvrpcpb.RawPutRequest) (*kv
 func (server *Server) RawDelete(_ context.Context, req *kvrpcpb.RawDeleteRequest) (*kvrpcpb.RawDeleteResponse, error) {
 	rsp := &kvrpcpb.RawDeleteResponse{}
 	err := server.storage.Write(req.Context, []storage.Modify{
-		storage.Modify{
+		{
 			Data: storage.Put{
-				Key:   req.Key,
-				Cf:    req.Cf,
+				Key: req.Key,
+				Cf:  req.Cf,
 			},
 		},
 	})
