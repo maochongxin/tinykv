@@ -41,38 +41,37 @@ func (server *Server) RawGet(_ context.Context, req *kvrpcpb.RawGetRequest) (*kv
 	reader, err := server.storage.Reader(req.Context)
 	if err != nil {
 		rsp.Error = err.Error()
-		return rsp, err
+		return rsp, nil
 	}
 
 	val, err := reader.GetCF(req.Cf, req.Key)
 	if err != nil {
 		rsp.Error = err.Error()
-		return rsp, err
+		return rsp, nil
 	}
-	rsp.Value = val
+
 	if val == nil {
 		rsp.NotFound = true
+		return rsp, nil
 	}
+	rsp.Value = val
 	return rsp, nil
 }
 
 func (server *Server) RawPut(_ context.Context, req *kvrpcpb.RawPutRequest) (*kvrpcpb.RawPutResponse, error) {
 	rsp := &kvrpcpb.RawPutResponse{}
 	err := server.storage.Write(req.Context, []storage.Modify{
-		storage.Modify{
-			Data: storage.Put{
+		{
+			Data: storage.Put {
 				Key:   req.Key,
 				Value: req.Value,
 				Cf:    req.Cf,
 			},
 		},
 	})
-
 	if err != nil {
 		rsp.Error = err.Error()
-		return rsp, err
 	}
-
 	return rsp, nil
 }
 
@@ -89,7 +88,6 @@ func (server *Server) RawDelete(_ context.Context, req *kvrpcpb.RawDeleteRequest
 
 	if err != nil {
 		rsp.Error = err.Error()
-		return rsp, err
 	}
 	return rsp, nil
 }
@@ -97,26 +95,24 @@ func (server *Server) RawDelete(_ context.Context, req *kvrpcpb.RawDeleteRequest
 func (server *Server) RawScan(_ context.Context, req *kvrpcpb.RawScanRequest) (*kvrpcpb.RawScanResponse, error) {
 	rsp := &kvrpcpb.RawScanResponse{}
 	reader, err := server.storage.Reader(req.Context)
+	defer reader.Close()
 	if err != nil {
 		rsp.Error = err.Error()
-		return rsp, err
+		return rsp, nil
 	}
 	dbIter := reader.IterCF(req.Cf)
+	defer dbIter.Close()
 	dbIter.Seek(req.StartKey)
-	result :=  make([]*kvrpcpb.KvPair, 0)
-	for i := 0; i < int(req.Limit); i++ {
+
+	for i := 0; dbIter.Valid() && i < int(req.Limit); i++ {
 		key := dbIter.Item().Key()
-		val, err := dbIter.Item().Value()
-		if err != nil {
-			rsp.Error = err.Error()
-			return rsp, err
-		}
-		result = append(result, &kvrpcpb.KvPair{
+		val, _ := dbIter.Item().Value()
+		rsp.Kvs = append(rsp.Kvs, &kvrpcpb.KvPair{
 			Key: key,
 			Value: val,
 		})
+		dbIter.Next()
 	}
-	rsp.Kvs = result
 	return rsp, nil
 }
 
