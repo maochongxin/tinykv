@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -77,7 +78,7 @@ func TestRawGetNotFound1(t *testing.T) {
 
 	cf := engine_util.CfDefault
 	req := &kvrpcpb.RawGetRequest{
-		Key: []byte{99},
+		Key: []byte{9},
 		Cf:  cf,
 	}
 	resp, err := server.RawGet(nil, req)
@@ -271,6 +272,12 @@ func TestRawScanAfterRawPut1(t *testing.T) {
 		assert.Equal(t, expectedKeys[i], kv.Key)
 		assert.Equal(t, append([]byte{233}, expectedKeys[i]...), kv.Value)
 	}
+	for _, kv := range resp.Kvs {
+		server.RawDelete(context.Background(), &kvrpcpb.RawDeleteRequest{
+			Key: kv.Key,
+			Cf:  cf,
+		})
+	}
 }
 
 func TestRawScanAfterRawDelete1(t *testing.T) {
@@ -306,6 +313,7 @@ func TestRawScanAfterRawDelete1(t *testing.T) {
 	resp, err := server.RawScan(nil, scan)
 	assert.Nil(t, err)
 	assert.Equal(t, len(expectedKeys), len(resp.Kvs))
+	// delete dirty data
 	for i, kv := range resp.Kvs {
 		assert.Equal(t, expectedKeys[i], kv.Key)
 		assert.Equal(t, append([]byte{233}, expectedKeys[i]...), kv.Value)
