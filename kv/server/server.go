@@ -62,7 +62,7 @@ func (server *Server) RawPut(_ context.Context, req *kvrpcpb.RawPutRequest) (*kv
 	rsp := &kvrpcpb.RawPutResponse{}
 	err := server.storage.Write(req.Context, []storage.Modify{
 		{
-			Data: storage.Put {
+			Data: storage.Put{
 				Key:   req.Key,
 				Value: req.Value,
 				Cf:    req.Cf,
@@ -108,7 +108,7 @@ func (server *Server) RawScan(_ context.Context, req *kvrpcpb.RawScanRequest) (*
 		key := dbIter.Item().Key()
 		val, _ := dbIter.Item().Value()
 		rsp.Kvs = append(rsp.Kvs, &kvrpcpb.KvPair{
-			Key: key,
+			Key:   key,
 			Value: val,
 		})
 		dbIter.Next()
