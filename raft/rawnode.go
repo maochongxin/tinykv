@@ -75,7 +75,36 @@ type RawNode struct {
 // NewRawNode returns a new RawNode given configuration and a list of raft peers.
 func NewRawNode(config *Config) (*RawNode, error) {
 	// Your Code Here (2A).
-	return nil, nil
+	if config.ID == 0 {
+		panic("config.ID must not be zero")
+	}
+	r := newRaft(config)
+	rn := &RawNode{
+		Raft: r,
+	}
+	lastIndex, err := config.Storage.LastIndex()
+	if err != nil {
+		panic(err)
+	}
+	if lastIndex == 0 {
+		r.becomeFollower(1, None)
+		ents := make([]pb.Entry, len(config.peers))
+		for i, peer := range config.peers {
+			cc := pb.ConfChange{ChangeType: pb.ConfChangeType_AddNode, NodeId: peer}
+			data, err := cc.Marshal()
+			if err != nil {
+				panic(err)
+			}
+
+			ents[i] = pb.Entry{EntryType: pb.EntryType_EntryConfChange, Term: 1, Index: uint64(i + 1), Data: data}
+		}
+		r.RaftLog.committed = uint64(len(ents))
+		for _, peer := range config.peers {
+			r.addNode(peer)
+		}
+	}
+
+	return rn, nil
 }
 
 // Tick advances the internal logical clock by a single tick.
